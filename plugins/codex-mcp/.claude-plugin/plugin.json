@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "codex-mcp",
   "displayName": "Codex MCP",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Runs OpenAI Codex from Claude Code: the codex-mcp server, a codex subagent that drives one Codex turn to its result, and a hook that keeps the Codex tools inside that subagent.",
   "author": {
     "name": "kvokka",

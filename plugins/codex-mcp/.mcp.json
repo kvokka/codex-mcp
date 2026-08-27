@@ -2,7 +2,7 @@
   "mcpServers": {
     "codex-mcp": {
       "command": "npx",
-      "args": ["-y", "@kvokka/codex-mcp@2.2.0"]
+      "args": ["-y", "@kvokka/codex-mcp@2.3.0"]
     }
   }
 }
