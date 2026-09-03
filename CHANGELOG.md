@@ -11,6 +11,8 @@ version it names — [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-09-03
+
 ### Changed
 
 - **A setting admits more agents to the Codex tools.** The plugin's `PreToolUse` hook reads `CODEX_MCP_ALLOWED_AGENTS`, a comma-separated list of agent types, and lets each of them through beside `codex-mcp:codex` and a bare `codex` — an agent that drives Codex in its own context rather than through the subagent. Entries are trimmed and empty ones ignored; the hook runs in the environment of the session that spawned it, so the `env` block of a Claude Code settings file sets it. Every other caller, the head agent included, still gets `permissionDecision: deny`.

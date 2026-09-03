@@ -2,7 +2,7 @@
   "mcpServers": {
     "codex-mcp": {
       "command": "bunx",
-      "args": ["@kvokka/codex-mcp@3.0.3"],
+      "args": ["@kvokka/codex-mcp@3.1.0"],
       "env": {
         "CODEX_MCP_DEFAULT_MODEL": "gpt-5.6-luna",
         "CODEX_MCP_DEFAULT_EFFORT": "high",

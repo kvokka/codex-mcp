@@ -1,6 +1,6 @@
 {
   "name": "@kvokka/codex-mcp",
-  "version": "3.0.3",
+  "version": "3.1.0",
   "description": "MCP server that wraps OpenAI Codex app-server — start coding agents, poll their progress, and manage permissions from any MCP client",
   "type": "module",
   "main": "dist/index.js",
