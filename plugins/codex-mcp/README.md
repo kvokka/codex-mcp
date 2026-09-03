@@ -71,6 +71,10 @@ with hard instructions, a question it could answer in a second. It writes no
 answer of its own, runs no command, reads no file, and rephrases nothing. The
 only thing it decides is the cwd.
 
+Its `tools:` frontmatter names the five codex-mcp tools and nothing else, so
+reading a file or running a command is not a rule it keeps: it holds no tool
+that does either.
+
 How Codex starts is not its to pick either. `.mcp.json` sets five variables the
 server reads — `CODEX_MCP_DEFAULT_MODEL`, `CODEX_MCP_DEFAULT_EFFORT`,
 `CODEX_MCP_DEFAULT_APPROVAL_TIMEOUT_MS`, `CODEX_MCP_DEFAULT_APPROVAL_POLICY` and
@@ -151,6 +155,15 @@ and for a bare `codex`, which is what a copy of the agent placed in a project's
 own `.claude/agents/` is called. Everything else, unreadable input included,
 gets `permissionDecision: deny` and a line telling the caller to spawn the
 subagent.
+
+`CODEX_MCP_ALLOWED_AGENTS` admits more agent types, comma-separated — an agent
+that drives Codex in its own context rather than through this subagent. The hook
+runs in the environment of the session that spawned it, so the `env` block of a
+Claude Code settings file is where it goes:
+
+```json
+{ "env": { "CODEX_MCP_ALLOWED_AGENTS": "my-plugin:researcher, my-plugin:reviewer" } }
+```
 
 The hook finds itself through `${CLAUDE_PLUGIN_ROOT}`, so it runs from wherever
 the plugin is installed.

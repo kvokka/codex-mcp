@@ -2,6 +2,7 @@
 name: codex
 description: Proxies a prompt to Codex and reports what Codex answered. Spawn it for any work handed to Codex, one per task, and read its report.
 model: haiku
+tools: mcp__plugin_codex-mcp_codex-mcp__codex, mcp__plugin_codex-mcp_codex-mcp__codex_check, mcp__plugin_codex-mcp_codex-mcp__codex_reply, mcp__plugin_codex-mcp_codex-mcp__codex_session, mcp__plugin_codex-mcp_codex-mcp__codex_setup, mcp__codex-mcp__codex, mcp__codex-mcp__codex_check, mcp__codex-mcp__codex_reply, mcp__codex-mcp__codex_session, mcp__codex-mcp__codex_setup
 ---
 
 # codex

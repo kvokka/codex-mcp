@@ -1,13 +1,46 @@
 import { describe, expect, it } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+// @ts-expect-error -- plain ESM, shared with the scripts that run it.
+import { REQUIRED_TOOLS } from "../scripts/lib/mcp-client.mjs";
 import { resolveSessionDefaults } from "../src/utils/session-defaults.js";
+import { present } from "./helpers/present.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 const PLUGIN_SERVER = JSON.parse(read("plugins/codex-mcp/.mcp.json")).mcpServers["codex-mcp"];
+const PLUGIN_HOOK = JSON.parse(read("plugins/codex-mcp/hooks/hooks.json")).hooks.PreToolUse[0];
+const HOOK_SCRIPT = join(ROOT, "plugins/codex-mcp/hooks/codex-subagent-only.mjs");
+
+/** The tool names the driver may be given, under both spellings of the server. */
+const TOOL_NAMES: string[] = (REQUIRED_TOOLS as string[]).flatMap((tool) => [
+  `mcp__plugin_codex-mcp_codex-mcp__${tool}`,
+  `mcp__codex-mcp__${tool}`,
+]);
+
+/**
+ * What the hook answers a caller: it writes nothing where it allows the call.
+ *
+ * `allowed` is the `CODEX_MCP_ALLOWED_AGENTS` of the session the hook runs in,
+ * left out of the environment entirely where the test names none.
+ */
+function decide(payload: unknown, allowed?: string): string {
+  const env = { ...process.env, CODEX_MCP_ALLOWED_AGENTS: allowed };
+  if (allowed === undefined) delete env.CODEX_MCP_ALLOWED_AGENTS;
+  const run = spawnSync("bun", [HOOK_SCRIPT], {
+    input: typeof payload === "string" ? payload : JSON.stringify(payload),
+    encoding: "utf8",
+    env,
+  });
+  expect(run.status, run.stderr).toBe(0);
+  if (run.stdout === "") return "allow";
+  const answer = JSON.parse(run.stdout).hookSpecificOutput;
+  expect(answer.hookEventName).toBe("PreToolUse");
+  return answer.permissionDecision;
+}
 
 describe("the server the plugin starts", () => {
   const server = PLUGIN_SERVER;
@@ -41,11 +74,61 @@ describe("the server the plugin starts", () => {
 });
 
 describe("the hook the plugin installs", () => {
-  const hooks = JSON.parse(read("plugins/codex-mcp/hooks/hooks.json"));
-  const command = hooks.hooks.PreToolUse[0].hooks[0].command;
-
   it("runs under bun, the one runtime the plugin already asks for", () => {
-    expect(command).toStartWith("bun ");
+    expect(PLUGIN_HOOK.hooks[0].command).toStartWith("bun ");
+  });
+
+  it("fires on every tool the driver is given, under either spelling", () => {
+    const matcher = new RegExp(`^${PLUGIN_HOOK.matcher}$`);
+    for (const tool of TOOL_NAMES) {
+      expect(matcher.test(tool), `the matcher lets ${tool} past unguarded`).toBe(true);
+    }
+  });
+
+  // `codex-mcp:codex` is the driver as the plugin names it, and `codex` the same
+  // file copied into a project's `.claude/agents/`.
+  it.each(["codex", "codex-mcp:codex"])("lets %s through with no setting named", (agentType) => {
+    expect(decide({ agent_type: agentType })).toBe("allow");
+  });
+
+  it("denies the head agent, whose payload carries no agent_type", () => {
+    expect(decide({ tool_name: TOOL_NAMES[0] })).toBe("deny");
+  });
+
+  it("denies a subagent no setting admits", () => {
+    expect(decide({ agent_type: "reviewer" })).toBe("deny");
+  });
+
+  it("denies input it cannot read, which names no caller", () => {
+    expect(decide("{ not json")).toBe("deny");
+  });
+
+  it("admits the agent type CODEX_MCP_ALLOWED_AGENTS names", () => {
+    expect(decide({ agent_type: "reviewer" }, "reviewer")).toBe("allow");
+  });
+
+  it("keeps the two it ships with beside the ones the setting names", () => {
+    expect(decide({ agent_type: "codex-mcp:codex" }, "reviewer")).toBe("allow");
+  });
+
+  it.each(["researcher", "my-plugin:reviewer", "auditor"])(
+    "admits %s out of a list written with spaces",
+    (agentType) => {
+      expect(decide({ agent_type: agentType }, " researcher, my-plugin:reviewer ,auditor ")).toBe(
+        "allow"
+      );
+    }
+  );
+
+  it("reads a list carrying an empty entry, and admits no empty agent type", () => {
+    expect(decide({ agent_type: "researcher" }, "researcher,,auditor")).toBe("allow");
+    expect(decide({ agent_type: "auditor" }, "researcher,,auditor")).toBe("allow");
+    expect(decide({ agent_type: "" }, "researcher,,auditor")).toBe("deny");
+    expect(decide({ tool_name: TOOL_NAMES[0] }, "researcher,,auditor")).toBe("deny");
+  });
+
+  it("admits nobody extra where the setting is empty", () => {
+    expect(decide({ agent_type: "reviewer" }, "")).toBe("deny");
   });
 });
 
@@ -100,5 +183,13 @@ describe("the driver the plugin ships", () => {
 
   it("keeps its own decisions to how Codex is started", () => {
     expect(agent).toContain("**What you decide is only how Codex is started**");
+  });
+
+  // The prose tells the driver to read no file and run no command; the
+  // frontmatter is what leaves it holding no tool that could.
+  it("is given the five codex-mcp tools and nothing else", () => {
+    const line = present(/^tools:(.*)$/m.exec(agent), "the driver's tools: line")[1];
+    const named = line.split(",").map((tool) => tool.trim());
+    expect(new Set(named)).toEqual(new Set(TOOL_NAMES));
   });
 });
