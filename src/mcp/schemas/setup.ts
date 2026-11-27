@@ -51,7 +51,8 @@ export const setupResultShape = {
           z.object({
             id: z.string(),
             allowed: z.boolean(),
-            description: z.string().optional(),
+            // Codex sends `null` for a profile that has no description.
+            description: z.string().nullish(),
           })
         )
         .optional(),

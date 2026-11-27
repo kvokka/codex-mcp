@@ -11,6 +11,10 @@ version it names — [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`codex_setup` answers on a Codex that lists a profile with no description.** Codex 0.169 sends `"description": null` for the permission profiles that carry none, and the output schema took only a string, so the MCP SDK refused the structured content with `Output validation error` and the tool answered nothing. The schema now admits the null, as the wire type already did.
+
 ## [3.1.0] - 2026-09-03
 
 ### Changed
