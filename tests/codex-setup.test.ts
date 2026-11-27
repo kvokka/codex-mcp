@@ -4,6 +4,8 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
+import { z } from "zod";
+import { setupResultShape } from "../src/mcp/schemas/setup.js";
 import { executeCodexSetup } from "../src/tools/codex-setup/index.js";
 import { _resetForTesting } from "../src/utils/codex-executable.js";
 import { isCodexCliBelowMinimum } from "../src/utils/codex-version.js";
@@ -601,6 +603,27 @@ describe("executeCodexSetup permission profiles", () => {
       "Pass one of these ids as `permissions`: :read-only, :workspace."
     );
     expect(result.warnings).not.toContain(result.permissionProfiles.detail);
+  });
+
+  it("answers a listing whose profiles carry a null description within the output schema", async () => {
+    // Codex 0.169 sends `"description": null` for the profiles that have none; the
+    // MCP SDK validates the structured content against this shape before replying.
+    replies["permissionProfile/list"] = {
+      result: {
+        data: [
+          { id: ":read-only", allowed: true, description: null },
+          { id: ":workspace", allowed: true, description: "Writes the workspace" },
+          { id: ":danger-full-access", allowed: false },
+        ],
+        nextCursor: null,
+      },
+    };
+
+    const result = await executeCodexSetup(undefined, serverCwd);
+    const parsed = z.object(setupResultShape).safeParse(result);
+
+    expect(parsed.success).toBe(true);
+    expect(result.permissionProfiles.profiles?.[0]?.description).toBeNull();
   });
 
   it("follows the cursor of a listing that answered in pages", async () => {
